@@ -1,0 +1,75 @@
+name: Deploy to cPanel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          # 'next build' with 'output: export' creates the 'out' folder
+
+      - name: Build Backend
+        run: |
+          cd backend
+          npm ci
+          npx prisma generate
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deploy/backend
+          mkdir -p deploy/frontend/out
+          mkdir -p deploy/tmp
+          
+          # Copy frontend export
+          cp -r frontend/out/. deploy/frontend/out/
+          
+          # Copy backend source (excluding node_modules)
+          cp -r backend/. deploy/backend/
+          rm -rf deploy/backend/node_modules
+          
+          # Copy root entry point
+          cp app.js deploy/app.js
+          
+          # Create restart file for cPanel
+          touch deploy/tmp/restart.txt
+
+      - name: Create Prisma Client Zip for CloudLinux
+        run: |
+          cd backend/node_modules
+          zip -r ../../deploy/prisma_client_cloudlinux.zip .prisma @prisma
+          cd ../..
+
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}/
+          dangerous-clean-slate: false
+          exclude: |
+            **/node_modules/**
+            **/src/**/*.ts
+            .git*
+            .env*

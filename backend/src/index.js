@@ -38,13 +38,16 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
-});
+// Serve static frontend files in production
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(__dirname, '../../frontend/out');
+  app.use(express.static(frontendPath));
+  // Serve the SPA for any other routes (needed for Next.js routing)
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    }
+  });
+}
 
 app.listen(PORT, () => console.log(`🚀 SMS API running on http://localhost:${PORT}`));
