@@ -50,8 +50,10 @@ jobs:
           cp -r backend/. deploy/backend/
           rm -rf deploy/backend/node_modules
           
-          # Copy root entry point
+          # Copy root entry point and package files
           cp app.js deploy/app.js
+          cp package.json deploy/package.json
+          cp package-lock.json deploy/package-lock.json
           
           # Create restart file for cPanel
           touch deploy/tmp/restart.txt
