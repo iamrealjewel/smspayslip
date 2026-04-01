@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  HR
+}
+
+enum UploadStatus {
+  PENDING
+  VALIDATED
+  DUPLICATE_FOUND
+  NEEDS_REVIEW
+}
+
+enum CampaignStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  username     String     @unique
+  passwordHash String
+  role         Role       @default(HR)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  uploads      Upload[]
+  campaigns    Campaign[]
+}
+
+model Upload {
+  id         Int          @id @default(autoincrement())
+  filename   String
+  storedPath String
+  rowCount   Int
+  userId     Int
+  uploadedAt DateTime     @default(now())
+  status     UploadStatus @default(PENDING)
+  user       User         @relation(fields: [userId], references: [id])
+  campaigns  Campaign[]
+}
+
+model Campaign {
+  id          Int            @id @default(autoincrement())
+  uploadId    Int
+  userId      Int
+  startedAt   DateTime       @default(now())
+  completedAt DateTime?
+  status      CampaignStatus @default(RUNNING)
+  total       Int            @default(0)
+  successCount Int           @default(0)
+  failedCount  Int           @default(0)
+  upload      Upload         @relation(fields: [uploadId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
+  results     SMSResult[]
+}
+
+model SMSResult {
+  id          Int      @id @default(autoincrement())
+  campaignId  Int
+  empId       String
+  phone       String
+  month       String
+  grossSalary Float
+  smsText     String   @db.Text
+  status      String
+  apiResponse String?  @db.Text
+  sentAt      DateTime @default(now())
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  key   String @id
+  value String @db.Text
+}
