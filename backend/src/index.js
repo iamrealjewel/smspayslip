@@ -42,16 +42,6 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Serve static frontend files in production
-if (process.env.NODE_ENV === 'production') {
-  // Use Next.js request handler for all non-API routes
-  app.all('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      return handle(req, res);
-    }
-  });
-}
-
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -68,7 +58,7 @@ async function startServer() {
       });
       
       // Handle Next.js requests in production
-      app.all('(.*)', (req, res) => {
+      app.all('*path', (req, res) => {
         if (!req.path.startsWith('/api')) {
           return handle(req, res);
         }
