@@ -68,7 +68,7 @@ async function startServer() {
       });
       
       // Handle Next.js requests in production
-      app.all('*', (req, res) => {
+      app.all('(.*)', (req, res) => {
         if (!req.path.startsWith('/api')) {
           return handle(req, res);
         }
