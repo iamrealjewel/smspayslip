@@ -58,11 +58,30 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-// Start server after Next.js is ready
-if (dev) {
-  app.listen(PORT, () => console.log(`🚀 SMS API running on http://localhost:${PORT}`));
-} else {
-  nextApp.prepare().then(() => {
-    app.listen(PORT, () => console.log(`🚀 SMS API & Frontend running on PORT ${PORT}`));
-  });
+// Start server with robust error handling
+async function startServer() {
+  try {
+    if (!dev) {
+      console.log('📦 Production mode: Preparing Next.js...');
+      await nextApp.prepare().catch(err => {
+        console.error('⚠️ Next.js failed to prepare, but API will still run:', err.message);
+      });
+      
+      // Handle Next.js requests in production
+      app.all('*', (req, res) => {
+        if (!req.path.startsWith('/api')) {
+          return handle(req, res);
+        }
+      });
+    }
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server ready on port ${PORT} (NODE_ENV: ${process.env.NODE_ENV || 'development'})`);
+    });
+  } catch (err) {
+    console.error('❌ FATAL STARTUP ERROR:', err);
+    process.exit(1);
+  }
 }
+
+startServer();
