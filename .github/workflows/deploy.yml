@@ -26,7 +26,6 @@ jobs:
           cd frontend
           npm ci
           npm run build
-          # 'next build' with 'output: export' creates the 'out' folder
 
       - name: Build Backend
         run: |
@@ -37,11 +36,15 @@ jobs:
       - name: Prepare deployment package
         run: |
           mkdir -p deploy/backend
-          mkdir -p deploy/frontend/out
+          mkdir -p deploy/frontend/.next
+          mkdir -p deploy/frontend/public
           mkdir -p deploy/tmp
           
-          # Copy frontend export
-          cp -r frontend/out/. deploy/frontend/out/
+          # Copy frontend production build and config
+          cp -r frontend/.next/ deploy/frontend/
+          cp -r frontend/public/ deploy/frontend/
+          cp frontend/package.json deploy/frontend/
+          cp frontend/next.config.ts deploy/frontend/
           
           # Copy backend source (excluding node_modules)
           cp -r backend/. deploy/backend/

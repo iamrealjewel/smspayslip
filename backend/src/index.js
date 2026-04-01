@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
+const next = require('next');
 
 const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/uploads');
@@ -15,6 +16,9 @@ const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const dev = process.env.NODE_ENV !== 'production';
+const nextApp = next({ dev, dir: path.resolve(__dirname, '../../frontend') });
+const handle = nextApp.getRequestHandler();
 
 // Ensure uploads directory exists
 const uploadDir = path.resolve(process.env.UPLOAD_DIR || './uploads');
@@ -40,14 +44,25 @@ app.use('/api/settings', settingsRoutes);
 
 // Serve static frontend files in production
 if (process.env.NODE_ENV === 'production') {
-  const frontendPath = path.join(__dirname, '../../frontend/out');
-  app.use(express.static(frontendPath));
-  // Serve the SPA for any other routes (needed for Next.js routing)
-  app.get('*', (req, res) => {
+  // Use Next.js request handler for all non-API routes
+  app.all('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(frontendPath, 'index.html'));
+      return handle(req, res);
     }
   });
 }
 
-app.listen(PORT, () => console.log(`🚀 SMS API running on http://localhost:${PORT}`));
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+});
+
+// Start server after Next.js is ready
+if (dev) {
+  app.listen(PORT, () => console.log(`🚀 SMS API running on http://localhost:${PORT}`));
+} else {
+  nextApp.prepare().then(() => {
+    app.listen(PORT, () => console.log(`🚀 SMS API & Frontend running on PORT ${PORT}`));
+  });
+}
