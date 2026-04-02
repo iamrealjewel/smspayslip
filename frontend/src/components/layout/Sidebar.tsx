@@ -14,6 +14,7 @@ const navItems = [
   { href: "/upload",    label: "Upload Excel", icon: Upload },
   { href: "/campaigns", label: "Campaigns",   icon: Send },
   { href: "/history",   label: "History",     icon: History },
+  { href: "/profile",   label: "Profile",     icon: Users },
 ];
 
 const adminItems = [

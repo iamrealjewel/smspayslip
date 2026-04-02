@@ -8,8 +8,10 @@ import { Send, FileSpreadsheet, Trash2, Filter, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useConfirm } from "@/context/ConfirmationContext";
 
 export default function CampaignsPage() {
+  const confirm = useConfirm();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState("");
@@ -35,7 +37,12 @@ export default function CampaignsPage() {
   }, [fromDate, toDate]);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this campaign? This will permanently remove all associated SMS results.")) return;
+    const ok = await confirm({
+      title: "Delete Campaign?",
+      description: "Are you sure you want to delete this campaign? This will permanently remove all associated SMS results.",
+      variant: "destructive"
+    });
+    if (!ok) return;
     try {
       await api.delete(`/api/campaigns/${id}`);
       toast.success("Campaign deleted");

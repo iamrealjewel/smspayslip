@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/context/ConfirmationContext";
 
 // ─── Phone validation ────────────────────────────────────────────────────────
 function isValidPhone(phone: string): boolean {
@@ -55,6 +56,7 @@ function IssueBadge({ item }: { item: IssueItem }) {
 // ─── Main page ───────────────────────────────────────────────────────────────
 export default function UploadPage() {
   const router = useRouter();
+  const confirm = useConfirm();
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -162,7 +164,12 @@ export default function UploadPage() {
 
   // ── Delete upload ────────────────────────────────────────────────────────
   const handleDeleteUpload = async (id: number) => {
-    if (!confirm("Are you sure? This will delete the record and its campaigns.")) return;
+    const ok = await confirm({
+      title: "Delete Upload?",
+      description: "Are you sure? This will delete the record and its campaigns.",
+      variant: "destructive"
+    });
+    if (!ok) return;
     try {
       await api.delete(`/api/uploads/${id}`);
       toast.success("Upload deleted");
@@ -249,6 +256,28 @@ export default function UploadPage() {
     }
     return filtered;
   }, [issues, tab, focusedIdx, rows, phoneEdits]);
+
+  // ── Remove all visible issues ──────────────────────────────────────────
+  const handleRemoveAll = async () => {
+    if (!visible.length) return;
+    const msg = tab === "all" 
+      ? `Remove all ${visible.length} issues?` 
+      : `Remove all ${visible.length} records from this view?`;
+    
+    const ok = await confirm({
+      title: "Bulk Remove?",
+      description: msg,
+      variant: "destructive"
+    });
+    if (!ok) return;
+
+    setRemoved((prev) => {
+      const next = new Set(prev);
+      visible.forEach((item) => next.add(item.idx));
+      return next;
+    });
+    toast.success(`Removed ${visible.length} records`);
+  };
 
   const canProceed = !!result && !result.error && !!stats && stats.totalIssues === 0 && stats.remaining > 0;
 
@@ -418,12 +447,24 @@ export default function UploadPage() {
                   <p className="text-xs text-muted-foreground">Changes are applied immediately for validation.</p>
                 </div>
 
-                <div className="flex gap-1.5 px-5 py-3 overflow-x-auto border-b border-border/50 bg-muted/10">
-                  {tabs.map((t) => (t.count! > 0 || t.key === "all") && (
-                    <button key={t.key} onClick={() => setTab(t.key)} className={`tab-btn ${tab === t.key ? "active" : ""}`}>
-                      {t.label} {t.count! > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 text-[10px]">{t.count}</span>}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 bg-muted/10">
+                  <div className="flex gap-1.5 overflow-x-auto">
+                    {tabs.map((t) => (t.count! > 0 || t.key === "all") && (
+                      <button key={t.key} onClick={() => setTab(t.key)} className={`tab-btn ${tab === t.key ? "active" : ""}`}>
+                        {t.label} {t.count! > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 text-[10px]">{t.count}</span>}
+                      </button>
+                    ))}
+                  </div>
+
+                  {visible.length > 1 && (
+                    <button 
+                      type="button"
+                      onClick={handleRemoveAll}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Remove All
                     </button>
-                  ))}
+                  )}
                 </div>
 
                 <div className="overflow-x-auto">
